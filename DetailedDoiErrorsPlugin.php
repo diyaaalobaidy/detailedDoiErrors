@@ -36,6 +36,38 @@ use PKP\security\Role;
 class DetailedDoiErrorsPlugin extends GenericPlugin
 {
     /**
+     * @copydoc LazyLoadPlugin::getEnabled()
+     */
+    public function getEnabled($contextId = null)
+    {
+        return true;
+    }
+
+    /**
+     * @copydoc LazyLoadPlugin::getCanEnable()
+     */
+    public function getCanEnable()
+    {
+        return false;
+    }
+
+    /**
+     * @copydoc LazyLoadPlugin::getCanDisable()
+     */
+    public function getCanDisable()
+    {
+        return false;
+    }
+
+    /**
+     * @copydoc LazyLoadPlugin::isSitePlugin()
+     */
+    public function isSitePlugin()
+    {
+        return true;
+    }
+
+    /**
      * @copydoc Plugin::register()
      */
     public function register($category, $path, $mainContextId = null)
@@ -43,20 +75,24 @@ class DetailedDoiErrorsPlugin extends GenericPlugin
         $success = parent::register($category, $path, $mainContextId);
 
         if ($success) {
+            $localePath = __DIR__ . '/locale';
+            if (is_dir($localePath)) {
+                \PKP\facades\Locale::registerPath($localePath);
+            }
+
             if (Application::isUnderMaintenance()) {
                 return true;
             }
 
-            if ($this->getEnabled($mainContextId)) {
-                // Hook into TemplateManager to inject JS/CSS on backend pages
-                Hook::add('TemplateManager::display', $this->callbackTemplateDisplay(...));
+            // Hook into TemplateManager to inject JS/CSS on backend pages
+            Hook::add('TemplateManager::display', $this->callbackTemplateDisplay(...));
+            Hook::add('Template::Layout::Backend::HeaderActions', $this->callbackHeaderActions(...));
 
-                // Hook into APIHandler for dois to register diagnostic endpoints
-                Hook::add('APIHandler::endpoints::dois', $this->callbackRegisterApiEndpoints(...));
+            // Hook into APIHandler for dois to register diagnostic endpoints
+            Hook::add('APIHandler::endpoints::dois', $this->callbackRegisterApiEndpoints(...));
 
-                // Hook into DoiListPanel configuration to provide plugin API endpoint and locales
-                Hook::add('DoiListPanel::setConfig', $this->callbackDoiListPanelConfig(...));
-            }
+            // Hook into DoiListPanel configuration to provide plugin API endpoint and locales
+            Hook::add('DoiListPanel::setConfig', $this->callbackDoiListPanelConfig(...));
         }
 
         return $success;
@@ -453,16 +489,44 @@ class DetailedDoiErrorsPlugin extends GenericPlugin
     }
 
     /**
+     * Hook callback: Template::Layout::Backend::HeaderActions
+     * Injects the plugin's JS and CSS into the backend header on DOI management pages.
+     */
+    public function callbackHeaderActions(string $hookName, array $args): bool
+    {
+        $request = Application::get()->getRequest();
+        $page = $request->getRequestedPage();
+        $op = $request->getRequestedOp();
+
+        if ($page === 'dois' || ($page === 'management' && $op === 'dois')) {
+            $baseUrl = $request->getBaseUrl();
+            $pluginUrl = $baseUrl . '/' . $this->getPluginPath();
+
+            $output = &$args[2] ?? $args[1] ?? null;
+            $snippet = '<script type="text/javascript" src="' . htmlspecialchars($pluginUrl . '/js/detailedDoiErrors.js', ENT_QUOTES) . '"></script>' . "\n"
+                     . '<style type="text/css">' . $this->_getCustomCss() . '</style>' . "\n";
+
+            if (is_string($output)) {
+                $output .= $snippet;
+            } else {
+                echo $snippet;
+            }
+        }
+
+        return Hook::CONTINUE;
+    }
+
+    /**
      * Hook callback: TemplateManager::display
      * Injects the plugin's JavaScript file into the backend template.
      */
     public function callbackTemplateDisplay(string $hookName, array $args): bool
     {
         $templateMgr = $args[0];
-        $template = $args[1];
+        $template = (string) ($args[1] ?? '');
 
-        // Only inject on backend DOI management pages
-        if ($template === 'management/dois.tpl') {
+        // Inject on backend DOI management pages
+        if ($template === 'management/dois.tpl' || str_contains($template, 'dois.tpl')) {
             $request = Application::get()->getRequest();
             $baseUrl = $request->getBaseUrl();
             $pluginUrl = $baseUrl . '/' . $this->getPluginPath();
@@ -476,30 +540,36 @@ class DetailedDoiErrorsPlugin extends GenericPlugin
                 ]
             );
 
-            // Add CSS styling for detailed diagnostic dialog and code blocks
-            $customCss = "
-                .detailed-doi-errors-modal { max-height: 80vh; overflow-y: auto; font-size: 0.9rem; }
-                .detailed-doi-errors-modal h3 { font-size: 1.05rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }
-                .detailed-doi-errors-modal h3:first-child { margin-top: 0; }
-                .detailed-doi-errors-modal .diag-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem; }
-                .detailed-doi-errors-modal .diag-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; font-size: 0.75rem; margin-right: 0.5rem; }
-                .detailed-doi-errors-modal .diag-badge-error { background: #fee2e2; color: #b91c1c; }
-                .detailed-doi-errors-modal .diag-badge-job { background: #fef3c7; color: #92400e; }
-                .detailed-doi-errors-modal .diag-pre { background: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; margin-top: 0.5rem; max-height: 250px; }
-                .detailed-doi-errors-modal .diag-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.75rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
-                .detailed-doi-errors-modal .diag-label { font-weight: 600; color: #475569; }
-                .detailed-doi-errors-modal .diag-actions { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
-                .detailed-doi-errors-btn { display: inline-flex; align-items: center; margin-left: 0.5rem; color: #dc2626; border-color: #fca5a5; }
-                .detailed-doi-errors-btn:hover { background-color: #fef2f2; }
-            ";
-
             $templateMgr->addHeader(
                 'detailedDoiErrorsCss',
-                '<style type="text/css">' . $customCss . '</style>',
+                '<style type="text/css">' . $this->_getCustomCss() . '</style>',
                 ['contexts' => ['backend']]
             );
         }
 
         return Hook::CONTINUE;
+    }
+
+    /**
+     * Return custom styling for dialog and action buttons.
+     */
+    private function _getCustomCss(): string
+    {
+        return "
+            .detailed-doi-errors-modal { max-height: 80vh; overflow-y: auto; font-size: 0.9rem; }
+            .detailed-doi-errors-modal h3 { font-size: 1.05rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.25rem; }
+            .detailed-doi-errors-modal h3:first-child { margin-top: 0; }
+            .detailed-doi-errors-modal .diag-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem; }
+            .detailed-doi-errors-modal .diag-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: bold; font-size: 0.75rem; margin-right: 0.5rem; }
+            .detailed-doi-errors-modal .diag-badge-error { background: #fee2e2; color: #b91c1c; }
+            .detailed-doi-errors-modal .diag-badge-job { background: #fef3c7; color: #92400e; }
+            .detailed-doi-errors-modal .diag-pre { background: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; word-break: break-all; margin-top: 0.5rem; max-height: 250px; }
+            .detailed-doi-errors-modal .diag-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.75rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
+            .detailed-doi-errors-modal .diag-label { font-weight: 600; color: #475569; }
+            .detailed-doi-errors-modal .diag-actions { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+            .detailed-doi-errors-btn { display: inline-flex; align-items: center; margin-left: 0.5rem; color: #dc2626; border-color: #fca5a5; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; }
+            .detailed-doi-errors-btn:hover { background-color: #fef2f2; }
+            .detailed-doi-errors-btn i, .detailed-doi-errors-btn svg { margin-right: 0.25rem; }
+        ";
     }
 }

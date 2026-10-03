@@ -1,0 +1,82 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: detailedDoiErrors\n"
+"POT-Creation-Date: 2026-10-03 12:00+0000\n"
+"PO-Revision-Date: 2026-10-03 12:00+0000\n"
+"Language-Team: Arabic\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "plugins.generic.detailedDoiErrors.displayName"
+msgstr "تفاصيل أخطاء إيداع معرف الكائن الرقمي (DOI) وتشخيص المهام"
+
+msgid "plugins.generic.detailedDoiErrors.description"
+msgstr "يعرض تفاصيل أخطاء إرسال وإيداع معرف الكائن الرقمي (DOI) المستخرجة من استجابات وكالات الإيداع مثل Crossref و DataCite وتفاصيل فشل مهام قائمة الانتظار."
+
+msgid "plugins.generic.detailedDoiErrors.buttonLabel"
+msgstr "تفاصيل الخطأ وسجلات المهمة"
+
+msgid "plugins.generic.detailedDoiErrors.modalTitle"
+msgstr "تشخيص أخطاء وفشل إيداع المعرف الرقمي (DOI)"
+
+msgid "plugins.generic.detailedDoiErrors.sectionDepositDetails"
+msgstr "تفاصيل إيداع وكالة التسجيل"
+
+msgid "plugins.generic.detailedDoiErrors.sectionJobDetails"
+msgstr "تفاصيل فشل مهمة قائمة الانتظار (Queue Job)"
+
+msgid "plugins.generic.detailedDoiErrors.noFailedJobs"
+msgstr "لم يتم العثور على مهام فاشلة في قائمة الانتظار لهذا العنصر."
+
+msgid "plugins.generic.detailedDoiErrors.noDepositErrors"
+msgstr "لا يوجد خطأ إيداع مسجل لدى وكالة التسجيل لهذا المعرف."
+
+msgid "plugins.generic.detailedDoiErrors.agency"
+msgstr "الوكالة"
+
+msgid "plugins.generic.detailedDoiErrors.batchId"
+msgstr "معرف الدفعة / الإيداع"
+
+msgid "plugins.generic.detailedDoiErrors.failedAt"
+msgstr "تاريخ ووقت الفشل"
+
+msgid "plugins.generic.detailedDoiErrors.jobId"
+msgstr "معرف المهمة"
+
+msgid "plugins.generic.detailedDoiErrors.queue"
+msgstr "قائمة الانتظار"
+
+msgid "plugins.generic.detailedDoiErrors.exception"
+msgstr "رسالة الخطأ / الاستثناء"
+
+msgid "plugins.generic.detailedDoiErrors.stackTrace"
+msgstr "تتبع المكدس (Stack Trace)"
+
+msgid "plugins.generic.detailedDoiErrors.rawResponse"
+msgstr "الاستجابة الأصلية / نص XML"
+
+msgid "plugins.generic.detailedDoiErrors.parsedErrors"
+msgstr "التحليل التشخيصي للخطأ"
+
+msgid "plugins.generic.detailedDoiErrors.status"
+msgstr "الحالة"
+
+msgid "plugins.generic.detailedDoiErrors.doi"
+msgstr "معرف الكائن الرقمي (DOI)"
+
+msgid "plugins.generic.detailedDoiErrors.item"
+msgstr "العنصر"
+
+msgid "plugins.generic.detailedDoiErrors.loading"
+msgstr "جاري تحميل تفاصيل التشخيص..."
+
+msgid "plugins.generic.detailedDoiErrors.fetchError"
+msgstr "تعذر جلب تفاصيل التشخيص لهذا العنصر."
+
+msgid "plugins.generic.detailedDoiErrors.copyAll"
+msgstr "نسخ التفاصيل"
+
+msgid "plugins.generic.detailedDoiErrors.copied"
+msgstr "تم النسخ إلى الحافظة بنجاح!"

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE version SYSTEM "../../../lib/pkp/dtd/pluginVersion.dtd">
+<!--
+  * plugins/generic/detailedDoiErrors/version.xml
+  *
+  * Detailed DOI Errors Plugin for OJS 3.5
+  -->
+<version>
+	<application>detailedDoiErrors</application>
+	<type>plugins.generic</type>
+	<release>1.0.0.0</release>
+	<date>2026-10-03</date>
+	<lazy-load>1</lazy-load>
+	<class>DetailedDoiErrorsPlugin</class>
+</version>

@@ -1,0 +1,82 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: detailedDoiErrors\n"
+"POT-Creation-Date: 2026-10-03 12:00+0000\n"
+"PO-Revision-Date: 2026-10-03 12:00+0000\n"
+"Language-Team: English\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "plugins.generic.detailedDoiErrors.displayName"
+msgstr "Detailed DOI Errors & Queue Diagnostics"
+
+msgid "plugins.generic.detailedDoiErrors.description"
+msgstr "Displays full DOI submission and deposit error details parsed from deposit responses (Crossref, DataCite) as well as background queue job failure details."
+
+msgid "plugins.generic.detailedDoiErrors.buttonLabel"
+msgstr "Detailed Error & Job Logs"
+
+msgid "plugins.generic.detailedDoiErrors.modalTitle"
+msgstr "DOI Submission Error & Failure Diagnostics"
+
+msgid "plugins.generic.detailedDoiErrors.sectionDepositDetails"
+msgstr "Registration Agency Deposit Details"
+
+msgid "plugins.generic.detailedDoiErrors.sectionJobDetails"
+msgstr "Queue / Background Job Failure Details"
+
+msgid "plugins.generic.detailedDoiErrors.noFailedJobs"
+msgstr "No failed background queue jobs found for this item."
+
+msgid "plugins.generic.detailedDoiErrors.noDepositErrors"
+msgstr "No registration agency deposit error recorded on this DOI."
+
+msgid "plugins.generic.detailedDoiErrors.agency"
+msgstr "Agency"
+
+msgid "plugins.generic.detailedDoiErrors.batchId"
+msgstr "Batch / Deposit ID"
+
+msgid "plugins.generic.detailedDoiErrors.failedAt"
+msgstr "Failed At"
+
+msgid "plugins.generic.detailedDoiErrors.jobId"
+msgstr "Job ID"
+
+msgid "plugins.generic.detailedDoiErrors.queue"
+msgstr "Queue"
+
+msgid "plugins.generic.detailedDoiErrors.exception"
+msgstr "Exception / Error Message"
+
+msgid "plugins.generic.detailedDoiErrors.stackTrace"
+msgstr "Stack Trace"
+
+msgid "plugins.generic.detailedDoiErrors.rawResponse"
+msgstr "Raw Response / XML Body"
+
+msgid "plugins.generic.detailedDoiErrors.parsedErrors"
+msgstr "Parsed Error Diagnostic"
+
+msgid "plugins.generic.detailedDoiErrors.status"
+msgstr "Status"
+
+msgid "plugins.generic.detailedDoiErrors.doi"
+msgstr "DOI"
+
+msgid "plugins.generic.detailedDoiErrors.item"
+msgstr "Item"
+
+msgid "plugins.generic.detailedDoiErrors.loading"
+msgstr "Loading error diagnostics..."
+
+msgid "plugins.generic.detailedDoiErrors.fetchError"
+msgstr "Unable to retrieve diagnostic details for this item."
+
+msgid "plugins.generic.detailedDoiErrors.copyAll"
+msgstr "Copy Diagnostics"
+
+msgid "plugins.generic.detailedDoiErrors.copied"
+msgstr "Copied to clipboard!"

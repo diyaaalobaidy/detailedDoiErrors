@@ -95,7 +95,38 @@
 
         contentHtml += '</div>';
 
-        // Check if pkp.controllers.Page dialog or legacy dialog is available
+        // 1. Try pkp.eventBus.$emit('open-dialog-vue')
+        if (window.pkp && window.pkp.eventBus && typeof window.pkp.eventBus.$emit === 'function') {
+            try {
+                window.pkp.eventBus.$emit('open-dialog-vue', {
+                    dialogProps: {
+                        name: 'detailedDoiErrorsModal',
+                        title: title,
+                        message: contentHtml,
+                        actions: [
+                            {
+                                label: labels.close || labels.ok || 'Close',
+                                isPrimary: true,
+                                callback: function (close) {
+                                    if (typeof close === 'function') {
+                                        close();
+                                    } else {
+                                        window.pkp.eventBus.$emit('close-dialog-vue');
+                                    }
+                                }
+                            }
+                        ],
+                        modalStyle: 'negative'
+                    }
+                });
+                bindCopyButton(diagnostics);
+                return;
+            } catch (e) {
+                // proceed to fallbacks
+            }
+        }
+
+        // 2. Try pkp.modules.useModal
         var useModalModule = pkp.modules && pkp.modules.useModal;
         if (useModalModule && typeof useModalModule.useModal === 'function') {
             try {
@@ -118,27 +149,41 @@
                 bindCopyButton(diagnostics);
                 return;
             } catch (e) {
-                // fallback to jQuery dialog
+                // proceed to fallback
             }
         }
 
-        // Fallback: Custom jQuery / OJS modal dialog
-        var $dialog = $('<div></div>').html(contentHtml).dialog({
-            title: title,
-            width: 750,
-            modal: true,
-            closeOnEscape: true,
-            buttons: [
-                {
-                    text: labels.close || 'Close',
-                    class: 'pkpButton',
-                    click: function () {
-                        $(this).dialog('close');
-                    }
-                }
-            ],
-            close: function () {
-                $(this).dialog('destroy').remove();
+        // 3. Fallback: Standalone modal overlay
+        renderOverlayModal(title, contentHtml, labels, diagnostics);
+    }
+
+    function renderOverlayModal(title, contentHtml, labels, diagnostics) {
+        $('#detailed-doi-modal-overlay').remove();
+
+        var overlayHtml = '<div id="detailed-doi-modal-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;display:flex;align-items:center;justify-content:center;padding:1rem;">'
+            + '<div style="background:#fff;border-radius:8px;max-width:850px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04);overflow:hidden;">'
+            + '<div style="padding:1rem 1.5rem;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">'
+            + '<h2 style="margin:0;font-size:1.15rem;color:#0f172a;font-weight:600;">' + escapeHtml(title) + '</h2>'
+            + '<button type="button" id="detailed-doi-modal-close-x" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#64748b;line-height:1;">&times;</button>'
+            + '</div>'
+            + '<div style="padding:1.5rem;overflow-y:auto;flex:1;">'
+            + contentHtml
+            + '</div>'
+            + '<div style="padding:0.75rem 1.5rem;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;justify-content:flex-end;">'
+            + '<button type="button" class="pkpButton" id="detailed-doi-modal-close-btn">' + escapeHtml(labels.close || 'Close') + '</button>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+
+        $('body').append(overlayHtml);
+
+        $('#detailed-doi-modal-close-x, #detailed-doi-modal-close-btn').on('click', function () {
+            $('#detailed-doi-modal-overlay').remove();
+        });
+
+        $('#detailed-doi-modal-overlay').on('click', function (e) {
+            if (e.target === this) {
+                $(this).remove();
             }
         });
 
@@ -176,17 +221,61 @@
     }
 
     /**
+     * Resolve API URL and Labels from available PKP configurations
+     */
+    function getPluginConfig() {
+        var config = null;
+
+        if (window.pkp && window.pkp.registry && window.pkp.registry._instances) {
+            for (var key in window.pkp.registry._instances) {
+                var inst = window.pkp.registry._instances[key];
+                if (inst && inst.components) {
+                    var panel = inst.components.submissionDoiListPanel || inst.components.issueDoiListPanel;
+                    if (panel && panel.detailedDoiErrors) {
+                        config = panel.detailedDoiErrors;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!config && window.pkp && window.pkp.context && window.pkp.context.apiBaseUrl) {
+            config = {
+                apiUrl: window.pkp.context.apiBaseUrl + '/dois/diagnostics',
+                labels: {}
+            };
+        }
+
+        if (!config) {
+            // Default fallback
+            var currentPath = window.location.pathname;
+            var parts = currentPath.split('/');
+            var journalIndex = parts.indexOf('index.php');
+            var journal = (journalIndex !== -1 && parts[journalIndex + 1]) ? parts[journalIndex + 1] : '';
+
+            config = {
+                apiUrl: journal ? '/index.php/' + journal + '/api/v1/dois/diagnostics' : '/index.php/api/v1/dois/diagnostics',
+                labels: {}
+            };
+        }
+
+        return config;
+    }
+
+    /**
      * Fetch diagnostics from API and open modal
      */
     function fetchAndOpenDiagnostics(item, itemType, config) {
+        config = config || getPluginConfig();
         var labels = (config && config.labels) || {};
         var apiUrl = (config && config.apiUrl) || '';
+
         if (!apiUrl) {
-            alert('Diagnostics API URL is not configured.');
+            alert('Diagnostics API URL could not be resolved.');
             return;
         }
 
-        var endpoint = apiUrl + '/' + encodeURIComponent(itemType) + '/' + encodeURIComponent(item.id);
+        var endpoint = apiUrl.replace(/\/+$/, '') + '/' + encodeURIComponent(itemType) + '/' + encodeURIComponent(item.id);
 
         $.ajax({
             url: endpoint,
@@ -195,7 +284,7 @@
                 'X-Csrf-Token': pkp.currentUser ? pkp.currentUser.csrfToken : ''
             },
             beforeSend: function () {
-                // Show loading notification if available
+                // Show brief visual feedback if button clicked
             },
             success: function (data) {
                 showDiagnosticsModal(item, data, config);
@@ -214,120 +303,99 @@
      * Hook into DoiListItem components when Vue mounts or updates
      */
     function attachDiagnosticsButtons() {
-        var listPanels = [
-            pkp.registry && pkp.registry.getComponent && pkp.registry.getComponent('submissionDoiListPanel'),
-            pkp.registry && pkp.registry.getComponent && pkp.registry.getComponent('issueDoiListPanel')
-        ];
+        var config = getPluginConfig();
+        var btnText = (config.labels && config.labels.buttonLabel) || 'Detailed Error & Job Logs';
 
-        // Process all DoiListItems in DOM
-        $('.doiListItem').each(function () {
+        // Select all DOI list items in OJS 3.5:
+        // In OJS 3.5 DoiListPanel template, items have class .listPanel__item--doi and id="list-item-{type}-{id}"
+        var $items = $('.listPanel__item--doi, [id^="list-item-submission-"], [id^="list-item-issue-"], .doiListItem');
+
+        $items.each(function () {
             var $itemEl = $(this);
-            if ($itemEl.data('detailedDoiErrorsBound')) {
+            var idAttr = $itemEl.attr('id') || '';
+
+            // Extract itemType and itemId
+            var itemType = 'submission';
+            var itemId = null;
+
+            var idMatch = idAttr.match(/list-item-(submission|issue)-(\d+)/);
+            if (idMatch) {
+                itemType = idMatch[1];
+                itemId = parseInt(idMatch[2], 10);
+            } else {
+                // Fallback from checkboxes: name="submission[]" value="123"
+                var $chk = $itemEl.find('input[type="checkbox"]');
+                var chkName = $chk.attr('name') || '';
+                if (chkName.indexOf('issue') !== -1 || $itemEl.closest('#issue-doi-management').length > 0) {
+                    itemType = 'issue';
+                }
+                if ($chk.val()) {
+                    itemId = parseInt($chk.val(), 10);
+                }
+            }
+
+            if (!itemId) {
                 return;
             }
 
-            // Find the actions area (e.g., where 'View Error' or 'Deposit' buttons reside)
-            var $actionsArea = $itemEl.find('.doiListItem__actions, .doiListItem__itemActions, .pkpListPanelItem__actions, div[class*="actions"]').first();
-            if ($actionsArea.length === 0) {
-                $actionsArea = $itemEl;
-            }
+            var itemTitle = $itemEl.find('.listPanel__itemTitle, .doiListItem__title, a[href*="article"], a[href*="issue"]').first().text().trim() || ('#' + itemId);
+            var resolvedItem = {
+                id: itemId,
+                title: itemTitle
+            };
 
-            // Check if there is an existing error badge or errorMessageModalButton
-            var hasError = $itemEl.find('[ref="errorMessageModalButton"], .badge--error, span:contains("Error"), .pkpBadge--error').length > 0;
-            var isDoiStatusError = $itemEl.text().indexOf('Error') !== -1;
-
-            if (hasError || isDoiStatusError) {
-                // Retrieve item data from closest Vue component instance
-                var vueInstance = null;
-                var el = this;
-                while (el && !vueInstance) {
-                    if (el.__vueParentComponent || el.__vue_app__) {
-                        vueInstance = el.__vueParentComponent || el.__vue_app__;
-                    }
-                    el = el.parentElement;
+            // Detect error status:
+            // 1) Badge with text "Error" or class badge--error / badge--warn
+            // 2) Element [ref="errorMessageModalButton"]
+            // 3) Text content includes "Error" in badge area
+            var $badge = $itemEl.find('.doiListItem__itemMetadata--badge, .badge, [class*="Badge"]');
+            var hasErrorBadge = false;
+            $badge.each(function () {
+                var text = $(this).text().trim().toLowerCase();
+                if (text === 'error' || text.indexOf('error') !== -1) {
+                    hasErrorBadge = true;
                 }
+            });
 
-                // Append diagnostic button if not already added
-                if ($itemEl.find('.detailed-doi-errors-btn').length === 0) {
-                    var $btn = $('<button type="button" class="pkpButton detailed-doi-errors-btn"><span class="fa fa-stethoscope" aria-hidden="true"></span> Detailed Error & Job Logs</button>');
-                    
-                    $btn.on('click', function (e) {
+            var hasErrorMessageBtn = $itemEl.find('[ref="errorMessageModalButton"]').length > 0;
+            var isError = hasErrorBadge || hasErrorMessageBtn;
+
+            // Also check if user wants to see diagnostics on ANY item (or specifically error items)
+            if (isError) {
+                // 1. Add diagnostic button to top-level actions area (.listPanel__itemActions)
+                var $topActions = $itemEl.find('.listPanel__itemActions').first();
+                if ($topActions.length > 0 && $topActions.find('.detailed-doi-errors-btn').length === 0) {
+                    var $topBtn = $('<button type="button" class="pkpButton detailed-doi-errors-btn" title="View detailed DOI deposit and queue errors"><span class="fa fa-stethoscope" aria-hidden="true"></span> ' + escapeHtml(btnText) + '</button>');
+                    $topBtn.on('click', function (e) {
                         e.preventDefault();
                         e.stopPropagation();
-
-                        // Resolve item data and config
-                        var item = null;
-                        var itemType = 'submission';
-                        var config = null;
-
-                        // Try locating item from state
-                        if (pkp.registry && pkp.registry._instances) {
-                            for (var key in pkp.registry._instances) {
-                                var inst = pkp.registry._instances[key];
-                                if (inst && inst.components) {
-                                    var panel = inst.components.submissionDoiListPanel || inst.components.issueDoiListPanel;
-                                    if (panel && panel.detailedDoiErrors) {
-                                        config = panel.detailedDoiErrors;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Check root state
-                        if (!config && window.pkp && window.pkp.context) {
-                            config = window.pkp.detailedDoiErrors;
-                        }
-
-                        // Determine item type and ID from data attributes or DOM
-                        var itemId = $itemEl.attr('data-id') || $itemEl.attr('id');
-                        if (!itemId) {
-                            // Extract numbers from id string
-                            var matches = ($itemEl.attr('class') || '').match(/id-(\d+)/);
-                            if (matches) itemId = matches[1];
-                        }
-
-                        // Fallback search through Vue items
-                        if (window.pkp && window.pkp.registry && window.pkp.registry._instances) {
-                            Object.keys(window.pkp.registry._instances).forEach(function(instKey) {
-                                var inst = window.pkp.registry._instances[instKey];
-                                if (inst && inst.$data && inst.$data.items) {
-                                    // search item
-                                }
-                            });
-                        }
-
-                        // If item can be determined
-                        var resolvedItem = {
-                            id: itemId ? parseInt(itemId.replace(/\D/g, ''), 10) : 1,
-                            title: $itemEl.find('.doiListItem__title, .pkpListPanelItem__title').text().trim()
-                        };
-
-                        if (!resolvedItem.id || isNaN(resolvedItem.id)) {
-                            // Search closest row or checkbox value
-                            var val = $itemEl.find('input[type="checkbox"]').val();
-                            if (val) {
-                                resolvedItem.id = parseInt(val, 10);
-                            }
-                        }
-
-                        if ($itemEl.closest('#issue-doi-management').length > 0) {
-                            itemType = 'issue';
-                        }
-
-                        fetchAndOpenDiagnostics(resolvedItem, itemType, config || {
-                            apiUrl: $('body').attr('data-api-url') ? $('body').attr('data-api-url') + '/dois/diagnostics' : '/index.php/api/v1/dois/diagnostics',
-                            labels: {}
-                        });
+                        fetchAndOpenDiagnostics(resolvedItem, itemType, config);
                     });
+                    // Insert before the expander button if present, or append
+                    var $expander = $topActions.find('.expander, button[class*="expander"]');
+                    if ($expander.length > 0) {
+                        $topBtn.insertBefore($expander);
+                    } else {
+                        $topActions.append($topBtn);
+                    }
+                }
 
-                    $actionsArea.append($btn);
-                    $itemEl.data('detailedDoiErrorsBound', true);
+                // 2. Add diagnostic button to expanded depositor actions area (.doiListItem__depositorActions)
+                var $expandedActions = $itemEl.find('.doiListItem__depositorActions').first();
+                if ($expandedActions.length > 0 && $expandedActions.find('.detailed-doi-errors-btn-expanded').length === 0) {
+                    var $expBtn = $('<button type="button" class="pkpButton detailed-doi-errors-btn detailed-doi-errors-btn-expanded" style="margin-left:0.5rem;"><span class="fa fa-stethoscope" aria-hidden="true"></span> ' + escapeHtml(btnText) + '</button>');
+                    $expBtn.on('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fetchAndOpenDiagnostics(resolvedItem, itemType, config);
+                    });
+                    $expandedActions.append($expBtn);
                 }
             }
         });
     }
 
-    // Set up MutationObserver and root:mounted event listeners
+    // Initialize and keep observing DOM
     $(document).ready(function () {
         if (window.pkp && window.pkp.eventBus) {
             window.pkp.eventBus.$on('root:mounted', function () {
@@ -335,14 +403,15 @@
             });
         }
 
-        // Attach interval & observer to handle pagination and tab switches
-        setInterval(attachDiagnosticsButtons, 1000);
+        // Periodic sweep for tab switches, pagination, and Vue updates
+        attachDiagnosticsButtons();
+        setInterval(attachDiagnosticsButtons, 800);
 
         var observer = new MutationObserver(function () {
             attachDiagnosticsButtons();
         });
 
-        var targetNode = document.querySelector('.doiListPanel, #submission-doi-management, #issue-doi-management, body');
+        var targetNode = document.querySelector('#app') || document.body;
         if (targetNode) {
             observer.observe(targetNode, { childList: true, subtree: true });
         }

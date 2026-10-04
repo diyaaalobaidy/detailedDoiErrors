@@ -365,7 +365,7 @@
                 // 1. Add diagnostic button to top-level actions area (.listPanel__itemActions)
                 var $topActions = $itemEl.find('.listPanel__itemActions').first();
                 if ($topActions.length > 0 && $topActions.find('.detailed-doi-errors-btn').length === 0) {
-                    var $topBtn = $('<button type="button" class="pkpButton detailed-doi-errors-btn" title="View detailed DOI deposit and queue errors"><span class="fa fa-stethoscope" aria-hidden="true"></span> ' + escapeHtml(btnText) + '</button>');
+                    var $topBtn = $('<button type="button" class="pkpButton detailed-doi-errors-btn" title="View detailed DOI deposit and queue errors">' + escapeHtml(btnText) + '</button>');
                     $topBtn.on('click', function (e) {
                         e.preventDefault();
                         e.stopPropagation();

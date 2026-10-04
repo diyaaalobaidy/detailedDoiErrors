@@ -118,16 +118,13 @@ class DetailedDoiErrorsPlugin extends GenericPlugin
      * Hook callback: APIHandler::endpoints::dois
      * Adds custom API endpoints for retrieving comprehensive DOI error and failed job diagnostics.
      */
-    public function callbackRegisterApiEndpoints(string $hookName, array $args): bool
+    public function callbackRegisterApiEndpoints(string $hookName, \PKP\core\PKPBaseController $controller, \PKP\handler\APIHandler $apiHandler): bool
     {
-        $controller = $args[0];
-        $apiHandler = $args[1];
-
         // Register route: GET {context}/api/v1/dois/diagnostics/{itemType}/{itemId}
         $apiHandler->addRoute(
             'GET',
             'diagnostics/{itemType}/{itemId}',
-            [$this, 'apiGetDiagnostics'],
+            fn (Request $request): JsonResponse => $this->apiGetDiagnostics($request),
             'detailedDoiErrors.getDiagnostics',
             [Role::ROLE_ID_SITE_ADMIN, Role::ROLE_ID_MANAGER]
         );

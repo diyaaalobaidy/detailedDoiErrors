@@ -48,7 +48,7 @@ class DetailedDoiErrorsPlugin extends GenericPlugin
      */
     public function getCanEnable()
     {
-        return false;
+        return true;
     }
 
     /**
@@ -56,7 +56,7 @@ class DetailedDoiErrorsPlugin extends GenericPlugin
      */
     public function getCanDisable()
     {
-        return false;
+        return true;
     }
 
     /**
